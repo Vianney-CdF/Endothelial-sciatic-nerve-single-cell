@@ -1,5 +1,5 @@
 ---
-title: "Dendrogram clusters"
+title: "Top genes for cluster identification"
 author: "Dehais Vianney"
 ---
 
@@ -92,3 +92,36 @@ DotPlot(
     x = "Marqueurs",
     y = "Identité Cluster"
   )
+
+
+# Heatmap top genes per cluster
+
+# mean expression per cluster
+avg_expression <- AverageExpression(
+  sham_sub,
+  group.by = "ident",
+  assays = "SCT",
+  layer = "data",
+  return.seurat = FALSE
+)$SCT
+
+matrix_to_plot <- avg_expression[
+  unique(top5_markers$gene),
+  ,
+  drop = FALSE
+]
+
+scaled_matrix <- t(scale(t(matrix_to_plot)))
+
+heatmaply(
+  scaled_matrix,
+  main = "Expression Moyenne par Cluster (Autoscaled) - SHAM",
+  xlab = "Clusters",
+  ylab = "Gènes Marqueurs",
+  seriate = "mean",
+  colors = cool_warm(100),
+  grid_gap = 0.5,
+  showticklabels = c(TRUE, TRUE),
+  fontsize_row = 7,
+  fontsize_col = 10
+)
