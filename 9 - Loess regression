@@ -1,0 +1,258 @@
+---
+title: "Loess regression"
+author: "Dehais Vianney"
+---
+
+pseudotime_values <- sham_pseudotime$pseudotime_scorpius
+
+cor_results <- apply(
+  expression_matrix,
+  2,
+  function(x) {
+    cor(
+      x,
+      pseudotime_values,
+      method = "spearman",
+      use = "pairwise.complete.obs"
+    )
+  }
+)
+
+# Remove potential NA (important)
+cor_results <- cor_results[is.finite(cor_results)]
+
+# Can change here number of genes
+top_positive <- names(
+  sort(cor_results, decreasing = TRUE)
+)[1:10]
+
+top_negative <- names(
+  sort(cor_results, decreasing = FALSE)
+)[1:10]
+
+genes_for_regression <- unique(
+  c(top_positive, top_negative)
+)
+
+genes_for_regression
+
+n_neighbors <- 10
+grid_size <- 100
+
+pseudo_grid <- seq(
+  min(pseudotime_values),
+  max(pseudotime_values),
+  length.out = grid_size
+)
+
+grid_clusters <- sapply(
+  pseudo_grid,
+  function(p) {
+
+    nearest_cells <- order(
+      abs(df_pseudotime$Pseudotime - p)
+    )[1:n_neighbors]
+
+    neighbors <- df_pseudotime$Cluster[
+      nearest_cells
+    ]
+
+    names(
+      sort(
+        table(neighbors),
+        decreasing = TRUE
+      )
+    )[1]
+  }
+)
+
+grid_info <- data.frame(
+  Pseudotime = pseudo_grid,
+  Cluster = grid_clusters
+)
+
+grid_info$Cluster <- factor(
+  grid_info$Cluster,
+  levels = pseudotime_cluster_order
+)
+
+plot_data_regression <- data.frame(
+  Pseudotime = pseudotime_values,
+  expression_matrix[, genes_for_regression, drop = FALSE]
+) %>%
+  pivot_longer(
+    cols = -Pseudotime,
+    names_to = "Gene",
+    values_to = "Expression"
+  )
+
+plot_smooth_regression <- plot_data_regression %>%
+  group_by(Gene) %>%
+  group_modify(
+    ~ {
+      model <- loess(
+        Expression ~ Pseudotime,
+        data = .x,
+        span = 0.3
+      )
+
+      data.frame(
+        Pseudotime = pseudo_grid,
+        Expression_Smooth = predict(
+          model,
+          newdata = data.frame(
+            Pseudotime = pseudo_grid
+          )
+        )
+      )
+    }
+  ) %>%
+  ungroup() %>%
+  left_join(
+    grid_info,
+    by = "Pseudotime"
+  )
+
+# Plot
+  ggplot(
+  plot_smooth_regression,
+  aes(
+    x = Pseudotime,
+    y = Expression_Smooth,
+    group = Gene
+  )
+) +
+  geom_path(
+    aes(color = Cluster),
+    linewidth = 1.8
+  ) +
+  scale_color_manual(
+    values = umap_colors
+  ) +
+  facet_wrap(
+    ~Gene,
+    scales = "free_y"
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Expression Dynamics of Pseudotime-Correlated Genes - SHAM",
+    subtitle = paste0(
+      "Local cluster assignment: ",
+      n_neighbors,
+      " nearest cells"
+    ),
+    x = "SCORPIUS Pseudotime",
+    y = "Smoothed Expression"
+  )
+
+# Plot with genes of interest
+
+# Here it is an example for BNB clusters
+genes_of_interest_pseudotime <- c(
+  "Gja5", "Gja4", "Sema3g", "Clu", "Mgp", "Car4",
+  "Plvap", "Slc39a8", "Pdgfc", "Mfsd2a", "Cldn5",
+  "Pllp", "Sox17", "Mt1", "Mt2", "Lef1", "Cadm1",
+  "Atp10a", "Ephb4", "Selp", "Vwf"
+)
+
+genes_present_custom <- intersect(
+  genes_of_interest_pseudotime,
+  rownames(sham_pseudotime[["SCT"]])
+)
+
+genes_missing_custom <- setdiff(
+  genes_of_interest_pseudotime,
+  rownames(sham_pseudotime[["SCT"]])
+)
+
+genes_missing_custom
+
+expression_custom <- LayerData(
+  sham_pseudotime,
+  assay = "SCT",
+  layer = "data"
+)[
+  genes_present_custom,
+  ,
+  drop = FALSE
+]
+
+plot_data_custom <- data.frame(
+  Pseudotime = pseudotime_values,
+  t(as.matrix(expression_custom))
+) %>%
+  pivot_longer(
+    cols = -Pseudotime,
+    names_to = "Gene",
+    values_to = "Expression"
+  )
+
+  plot_smooth_custom <- plot_data_custom %>%
+  group_by(Gene) %>%
+  group_modify(
+    ~ {
+      model <- loess(
+        Expression ~ Pseudotime,
+        data = .x,
+        span = 0.3
+      )
+
+      data.frame(
+        Pseudotime = pseudo_grid,
+        Expression_Smooth = predict(
+          model,
+          newdata = data.frame(
+            Pseudotime = pseudo_grid
+          )
+        )
+      )
+    }
+  ) %>%
+  ungroup() %>%
+  left_join(
+    grid_info,
+    by = "Pseudotime"
+  )
+
+  plot_smooth_custom$Gene <- factor(
+  plot_smooth_custom$Gene,
+  levels = genes_of_interest_pseudotime
+)
+
+# Order of cluster here, to adapt of course
+plot_smooth_custom$Cluster <- factor(
+  plot_smooth_custom$Cluster,
+  levels = pseudotime_cluster_order
+)
+
+# Plot
+ggplot(
+  plot_smooth_custom,
+  aes(
+    x = Pseudotime,
+    y = Expression_Smooth,
+    group = Gene
+  )
+) +
+  geom_path(
+    aes(color = Cluster),
+    linewidth = 2
+  ) +
+  scale_color_manual(
+    values = umap_colors
+  ) +
+  facet_wrap(
+    ~Gene,
+    scales = "free_y"
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Expression Dynamics of Selected Markers - SHAM",
+    subtitle = paste0(
+      "Local cluster assignment: ",
+      n_neighbors,
+      " nearest cells"
+    ),
+    x = "SCORPIUS Pseudotime",
+    y = "Smoothed Expression"
+  )
