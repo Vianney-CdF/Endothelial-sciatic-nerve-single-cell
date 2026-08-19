@@ -1,5 +1,7 @@
-
-
+---
+title: "Dendrogram clusters"
+author: "Dehais Vianney"
+---
 
 # Can do the same with oxa condition
 sham_sub <- subset(combined, subset = condition == "sham")
