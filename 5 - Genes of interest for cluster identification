@@ -1,0 +1,81 @@
+---
+title: "Genes of interest for cluster identification"
+author: "Dehais Vianney"
+---
+
+# List of genes
+genes_of_interest <- c(
+  "Magi1", "Icam1", "Gse1", "Ephb4", "Aqp7", "Fabp4", "Lpl",
+  "Timp4", "Sema3g", "Gja4", "Fbln5", "Stmn2", "Vwf", "Selp",
+  "Ackr1", "Lrg1", "Penk", "Esm1", "Pacsin1", "Mdga2", "Jam3",
+  "Col15a1", "Cd300lg", "Plvap", "Plat", "Hey1", "Spock2",
+  "Reck", "Mfsd2a", "Mal", "Cldn5", "Pllp", "Car4", "Pdgfc",
+  "Ch25h", "Net1", "Lrmda", "Lef1", "Cadm1", "Mir100hg",
+  "Lyve1", "Pdpn", "Prox1", "Reln"
+)
+
+# Check if genes are in the dataset
+genes_present <- intersect(
+  genes_of_interest,
+  rownames(sham_sub[["SCT"]])
+)
+
+# Missing gene
+genes_missing <- setdiff(
+  genes_of_interest,
+  rownames(sham_sub[["SCT"]])
+)
+
+genes_missing
+
+# Cluster order
+Idents(sham_sub) <- "seurat_clusters"
+
+cluster_order <- c(
+  "7", "0", "4", "6", "11", "3",
+  "9", "5", "2", "8", "10", "1"
+)
+
+Idents(sham_sub) <- factor(
+  Idents(sham_sub),
+  levels = cluster_order
+)
+
+levels(Idents(sham_sub))
+
+# Plot
+DotPlot(
+  sham_sub,
+  features = genes_present,
+  assay = "SCT",
+  dot.scale = 6
+) +
+  RotatedAxis() +
+  scale_colour_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0
+  ) +
+  theme(
+    axis.text.x = element_text(
+      size = 8,
+      face = "italic",
+      angle = 45,
+      hjust = 1
+    ),
+    axis.text.y = element_text(
+      size = 10,
+      face = "bold"
+    ),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 1
+    )
+  ) +
+  labs(
+    title = "Expression of Genes of Interest (SHAM)",
+    x = "Selected Genes",
+    y = "Cluster Identity"
+  )
