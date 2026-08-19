@@ -1,0 +1,176 @@
+
+
+# Adapt it to the clusters of interest
+sham_pseudotime <- sham_sub
+
+DefaultAssay(sham_pseudotime) <- "SCT"
+
+Idents(sham_pseudotime) <- "seurat_clusters"
+Idents(sham_pseudotime) <- droplevels(Idents(sham_pseudotime))
+
+levels(Idents(sham_pseudotime))
+
+top20_markers_pseudotime <- markers_sham %>%
+  filter(cluster %in% levels(Idents(sham_pseudotime))) %>%
+  group_by(cluster) %>%
+  slice_max(
+    order_by = avg_log2FC,
+    n = 20,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+
+genes_for_trajectory <- unique(top20_markers_pseudotime$gene)
+
+# Keep only genes present in the SCT assay
+genes_present_pseudotime <- intersect(
+  genes_for_trajectory,
+  rownames(sham_pseudotime[["SCT"]])
+)
+
+length(genes_present_pseudotime)
+
+expression_matrix <- LayerData(
+  sham_pseudotime,
+  assay = "SCT",
+  layer = "data"
+)[genes_present_pseudotime, , drop = FALSE]
+
+expression_matrix <- t(as.matrix(expression_matrix))
+
+dim(expression_matrix)
+
+space <- reduce_dimensionality(
+  expression_matrix,
+  dist = "spearman",
+  ndim = 8
+)
+
+traj <- infer_trajectory(
+  space,
+  k = 4
+)
+
+length(traj$time)
+nrow(space)
+
+summary(traj$time)
+
+any(is.na(traj$time))
+any(is.infinite(traj$time))
+
+sham_pseudotime$pseudotime_scorpius <- traj$time
+
+df_pseudotime <- as.data.frame(space[, 1:2])
+
+colnames(df_pseudotime) <- c(
+  "SCORPIUS_Dim1",
+  "SCORPIUS_Dim2"
+)
+
+df_pseudotime$Cluster <- Idents(sham_pseudotime)
+df_pseudotime$Pseudotime <- traj$time
+
+trajectory_path <- as.data.frame(traj$path[, 1:2])
+
+colnames(trajectory_path) <- c(
+  "SCORPIUS_Dim1",
+  "SCORPIUS_Dim2"
+)
+
+ggplot(
+  df_pseudotime,
+  aes(
+    x = SCORPIUS_Dim1,
+    y = SCORPIUS_Dim2
+  )
+) +
+  geom_point(
+    aes(color = Cluster),
+    size = 1.5,
+    alpha = 0.8
+  ) +
+  geom_path(
+    data = trajectory_path,
+    aes(
+      x = SCORPIUS_Dim1,
+      y = SCORPIUS_Dim2
+    ),
+    inherit.aes = FALSE,
+    color = "black",
+    linewidth = 0.8,
+    arrow = arrow(
+      length = unit(0.2, "cm"),
+      type = "closed"
+    )
+  ) +
+  scale_color_manual(
+    values = umap_colors
+  ) +
+  theme_classic() +
+  labs(
+    title = "SCORPIUS Trajectory - SHAM",
+    subtitle = "All clusters",
+    x = "SCORPIUS Dimension 1",
+    y = "SCORPIUS Dimension 2"
+  ) +
+  theme(
+    legend.position = "right"
+  )
+
+# Ridge plot
+pseudotime_cluster_order <- df_pseudotime %>%
+  group_by(Cluster) %>%
+  summarise(
+    median_pseudotime = median(Pseudotime),
+    .groups = "drop"
+  ) %>%
+  arrange(median_pseudotime) %>%
+  pull(Cluster) %>%
+  as.character()
+
+pseudotime_cluster_order
+
+df_pseudotime$Cluster <- factor(
+  df_pseudotime$Cluster,
+  levels = rev(pseudotime_cluster_order)
+)
+
+ggplot(
+  df_pseudotime,
+  aes(
+    x = Pseudotime,
+    y = Cluster,
+    fill = Cluster
+  )
+) +
+  geom_density_ridges(
+    alpha = 0.7,
+    color = "black",
+    linewidth = 0.5,
+    scale = 1.5
+  ) +
+  scale_fill_manual(
+    values = umap_colors
+  ) +
+  theme_ridges(
+    center_axis_labels = TRUE
+  ) +
+  labs(
+    title = "Pseudotime Distribution - SHAM",
+    subtitle = "Clusters ordered by median pseudotime",
+    x = "SCORPIUS Pseudotime",
+    y = "Cluster Identity"
+  ) +
+  theme(
+    panel.grid.major.y = element_line(
+      color = "grey80",
+      linetype = "solid"
+    ),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line.x = element_line(
+      color = "black"
+    ),
+    legend.position = "none"
+  )
