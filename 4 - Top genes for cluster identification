@@ -52,7 +52,7 @@ top50_markers <- markers_sham_sig %>%
   ungroup()
 
 # Dotplot top genes per cluster
-genes_to_plot <- top10_markers %>%
+genes_to_plot <- top5_markers %>%
   arrange(cluster) %>%
   pull(gene) %>%
   unique()
