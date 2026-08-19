@@ -1,0 +1,98 @@
+---
+title: "Raw data reading"
+author: "Dehais Vianney"
+---
+
+# All the packages used for the whole analysis (some were only used as test)
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+library(ggridges)
+library(RColorBrewer)
+library(patchwork)
+library(pheatmap)
+library(tidyr)
+library(ggforce)
+library(clusterProfiler)
+library(org.Mm.eg.db)
+library(enrichplot)
+library(viridis)
+library(heatmaply)
+library(stringr)
+library(tidyverse)
+library(SCORPIUS)
+library(broom)
+library(ggdendro)
+library(ape)
+library(ggnewscale)
+library(ggvenn)
+library(eulerr)
+library(DOSE)
+library(writexl)
+library(readxl)
+library(UpSetR)
+
+# Data reading
+sham.data <- Read10X(data.dir = "/Users/Vi/Desktop/sham/filtered_feature_bc_matrix/")
+oxa.data  <- Read10X(data.dir = "/Users/Vi/Desktop/oxa/filtered_feature_bc_matrix/")
+
+sham <- CreateSeuratObject(counts = sham.data, project = "sham", min.cells = 5)
+oxa  <- CreateSeuratObject(counts = oxa.data,  project = "oxa",  min.cells = 5)
+
+# Defining name for each condition
+sham$condition <- "sham"
+oxa$condition  <- "oxa"
+
+sham[["percent.mt"]] <- PercentageFeatureSet(sham, pattern = "^mt-")
+oxa[["percent.mt"]]  <- PercentageFeatureSet(oxa,  pattern = "^mt-")
+
+# Plot for checking data' quality
+VlnPlot(
+   oxa,
+   features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
+   pt.size = 0.1, 
+   ncol = 3
+)
+
+VlnPlot(
+   sham,
+   features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
+   pt.size = 0.1, 
+   ncol = 3
+)
+
+# Filtering cells
+sham <- subset(sham, subset = nFeature_RNA > 300 & nCount_RNA > 1000 & percent.mt < 15)
+oxa  <- subset(oxa,  subset = nFeature_RNA > 300 & nCount_RNA > 1000 & percent.mt < 15)
+
+# Merging and normalisation
+combined <- merge(sham, y = oxa, add.cell.ids = c("sham","oxa"), project = "sham_oxa")
+combined[["percent.mt"]] <- PercentageFeatureSet(combined, pattern = "^mt-")
+DefaultAssay(combined) <- "RNA"
+combined <- SCTransform(combined, vars.to.regress = "percent.mt", verbose = FALSE)
+
+# Define the dimension
+combined <- RunPCA(combined, npcs = 50, verbose = FALSE)
+
+ElbowPlot(combined, ndims = 50)
+
+pct <- combined[["pca"]]@stdev / sum(combined[["pca"]]@stdev) * 100
+cumu <- cumsum(pct)
+co1 <- which(cumu > 90 & pct < 5)[1]
+co1
+
+co2 <- sort(which((pct[1:length(pct) - 1] - pct[2:length(pct)]) > 0.1), decreasing = T)[1] + 1
+co2
+
+pcs <- min(co1, co2)
+pcs
+
+plot_df <- data.frame(pct = pct, 
+           cumu = cumu, 
+           rank = 1:length(pct))
+
+ ggplot(plot_df, aes(cumu, pct, label = rank, color = rank > pcs)) + 
+  geom_text() + 
+  geom_vline(xintercept = 90, color = "grey") + 
+  geom_hline(yintercept = min(pct[pct > 5]), color = "grey") +
+  theme_bw()
