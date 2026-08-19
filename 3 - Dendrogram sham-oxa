@@ -1,0 +1,29 @@
+
+
+
+# Can do the same with oxa condition
+sham_sub <- subset(combined, subset = condition == "sham")
+
+Idents(sham_sub) <- "seurat_clusters"
+Idents(sham_sub) <- droplevels(Idents(sham_sub))
+
+sham_sub <- BuildClusterTree(
+  sham_sub,
+  dims = 1:13,
+  reorder = FALSE,
+  reorder.numeric = FALSE
+)
+
+tree_sham <- Tool(
+  sham_sub,
+  slot = "BuildClusterTree"
+)
+
+plot.phylo(
+  tree_sham,
+  direction = "downwards",
+  edge.width = 2,
+  font = 2,
+  label.offset = 0.2,
+  main = "Hiérarchie des clusters (SHAM uniquement)"
+)
