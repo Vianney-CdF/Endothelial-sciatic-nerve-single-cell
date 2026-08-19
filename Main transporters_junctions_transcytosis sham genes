@@ -1,0 +1,180 @@
+---
+title: "Main transporters/junctions sham"
+author: "Dehais Vianney"
+---
+
+DefaultAssay(sham_sub) <- "SCT"
+
+Idents(sham_sub) <- "seurat_clusters"
+
+Idents(sham_sub) <- factor(
+  Idents(sham_sub),
+  levels = cluster_order
+)
+
+# Define familly gene of interest
+junction_pattern <- paste0(
+  "^Cldn|",
+  "^Ocln|",
+  "^Tjp|",
+  "^F11r|",
+  "^Cdh5|",
+  "^Esam|",
+  "^Jam|",
+  "^Pecam"
+)
+
+transcytosis_pattern <- paste0(
+  "^Mfsd2a|",
+  "^Cav[123]|",
+  "^Cavin|",
+  "^Plvap|",
+  "^Ehd|",
+  "^Snx"
+)
+
+transporter_pattern <- "^Slc|^Abc"
+
+junction_markers <- markers_sham_sig %>%
+  filter(str_detect(gene, junction_pattern)) %>%
+  mutate(category = "Junctions")
+
+transcytosis_markers <- markers_sham_sig %>%
+  filter(str_detect(gene, transcytosis_pattern)) %>%
+  mutate(category = "Transcytosis / Vesicular trafficking")
+
+transporter_markers <- markers_sham_sig %>%
+  filter(str_detect(gene, transporter_pattern)) %>%
+  mutate(category = "Transporters")
+
+barrier_markers <- bind_rows(
+  junction_markers,
+  transcytosis_markers,
+  transporter_markers
+)
+
+top_barrier_genes <- barrier_markers %>%
+  group_by(category, gene) %>%
+  summarise(
+    max_avg_log2FC = max(avg_log2FC, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(category) %>%
+  slice_max(
+    order_by = max_avg_log2FC,
+    n = 15,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+
+# Here for BNB it is necessary to force PLVAP presence (discard # to use it)
+#if (
+  #"Plvap" %in% rownames(sham_sub[["SCT"]]) &&
+  #!"Plvap" %in% top_barrier_genes$gene
+#) {
+
+  #top_barrier_genes <- bind_rows(
+   # top_barrier_genes,
+    #data.frame(
+     # category = "Transcytosis / Vesicular trafficking",
+      #gene = "Plvap",
+     # max_avg_log2FC = NA_real_
+   # )
+  #)
+#}
+
+genes_to_plot <- top_barrier_genes %>%
+  arrange(
+    factor(
+      category,
+      levels = c(
+        "Junctions",
+        "Transcytosis / Vesicular trafficking",
+        "Transporters"
+      )
+    ),
+    desc(max_avg_log2FC)
+  ) %>%
+  pull(gene) %>%
+  unique()
+
+gene_groups <- top_barrier_genes %>%
+  select(gene, category) %>%
+  distinct()
+
+gene_groups$category <- factor(
+  gene_groups$category,
+  levels = c(
+    "Junctions",
+    "Transcytosis / Vesicular trafficking",
+    "Transporters"
+  )
+)
+
+p_barrier <- DotPlot(
+  sham_sub,
+  features = genes_to_plot,
+  assay = "SCT",
+  dot.scale = 6
+) +
+  RotatedAxis() +
+  scale_colour_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0
+  )
+
+p_barrier$data$category <- gene_groups$category[
+  match(
+    p_barrier$data$features.plot,
+    gene_groups$gene
+  )
+]
+
+final_barrier_plot <- p_barrier +
+  facet_grid(
+    ~category,
+    scales = "free_x",
+    space = "free_x"
+  ) +
+  theme(
+    panel.spacing = unit(0.4, "lines"),
+
+    strip.background = element_rect(
+      fill = "grey95",
+      color = "black"
+    ),
+
+    strip.text = element_text(
+      size = 10,
+      face = "bold"
+    ),
+
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.6
+    ),
+
+    axis.text.x = element_text(
+      size = 8,
+      face = "italic",
+      angle = 45,
+      hjust = 1
+    ),
+
+    axis.text.y = element_text(
+      size = 10,
+      face = "bold"
+    ),
+
+    axis.title = element_blank()
+  ) +
+  labs(
+    title = "Blood-Nerve Barrier Molecular Profile - SHAM",
+    color = "Relative Expression",
+    size = "% Expressing"
+  )
+
+print(final_barrier_plot)
