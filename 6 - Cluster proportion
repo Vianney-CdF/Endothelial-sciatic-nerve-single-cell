@@ -1,4 +1,7 @@
-
+---
+title: "Cluster proportion"
+author: "Dehais Vianney"
+---
 
 Idents(combined) <- "seurat_clusters"
 
