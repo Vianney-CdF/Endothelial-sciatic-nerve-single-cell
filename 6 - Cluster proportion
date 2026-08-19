@@ -1,0 +1,76 @@
+
+
+Idents(combined) <- "seurat_clusters"
+
+# Keep UMAP color for plot
+p_umap <- DimPlot(combined)
+
+umap_colors <- ggplot_build(p_umap)$data[[1]] %>%
+  select(group, colour) %>%
+  distinct() %>%
+  arrange(group) %>%
+  pull(colour)
+
+names(umap_colors) <- levels(combined)
+
+umap_colors
+
+cluster_proportions_sham <- combined@meta.data %>%
+  filter(condition == "sham") %>%
+  group_by(seurat_clusters) %>%
+  summarise(
+    n_cells = n(),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    percent = (n_cells / sum(n_cells)) * 100
+  )
+
+cluster_order <- c(
+  "7", "0", "4", "6", "11", "3",
+  "9", "5", "2", "8", "10", "1"
+)
+
+cluster_proportions_sham$seurat_clusters <- factor(
+  cluster_proportions_sham$seurat_clusters,
+  levels = cluster_order
+)
+
+# Plot
+ggplot(
+  cluster_proportions_sham,
+  aes(
+    x = seurat_clusters,
+    y = n_cells,
+    fill = seurat_clusters
+  )
+) +
+  geom_col(
+    width = 0.7,
+    alpha = 0.8,
+    color = "black"
+  ) +
+  geom_text(
+    aes(label = paste0(round(percent, 1), "%")),
+    hjust = -0.2,
+    size = 4,
+    fontface = "bold"
+  ) +
+  coord_flip() +
+  scale_fill_manual(
+    values = umap_colors
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title = "Cluster Distribution (SHAM)",
+    x = "Cluster",
+    y = "Number of Cells"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    axis.text.y = element_text(face = "bold"),
+    legend.position = "none"
+  )
+
