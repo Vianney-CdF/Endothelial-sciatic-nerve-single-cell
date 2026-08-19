@@ -1,3 +1,8 @@
+---
+title: "Dendrogram clusters"
+author: "Dehais Vianney"
+---
+
 DefaultAssay(sham_sub) <- "SCT"
 
 Idents(sham_sub) <- "seurat_clusters"
