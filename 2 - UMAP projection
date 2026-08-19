@@ -1,0 +1,35 @@
+---
+title: "UMAP projection/clustering"
+author: "Dehais Vianney"
+---
+
+# First UMAP
+combined <- RunPCA(combined, verbose = FALSE)
+combined <- FindNeighbors(combined, dims = 1:13)
+combined <- FindClusters(combined, resolution = 0.1)
+combined <- RunUMAP(combined, dims = 1:13, verbose = FALSE)
+DimPlot(combined, reduction = "umap", group.by = "condition") #plot the clusters per condition
+DimPlot(combined, reduction = "umap", label = TRUE) #plot all the cells (both conditions - merge)
+DimPlot(combined, reduction = "umap", split.by = "condition") #plot the clusters per condition separately
+
+# Second UMAP (discarding contaminating cells/clusters)
+combined <- subset(combined, idents = c(4, 5, 6), invert = TRUE)
+
+combined <- RunPCA(combined, verbose = FALSE)
+combined <- FindNeighbors(combined, dims = 1:13)
+combined <- FindClusters(combined, resolution = 0.1)
+combined <- RunUMAP(combined, dims = 1:13, verbose = FALSE)
+combined <- FindClusters(combined, resolution = 0.5)
+DimPlot(combined, reduction = "umap", label = TRUE)
+
+# Third UMAP (discarding macrophages)
+combined <- subset(combined, idents = c(8), invert = TRUE)
+
+combined <- RunPCA(combined, verbose = FALSE)
+combined <- FindNeighbors(combined, dims = 1:13)
+combined <- FindClusters(combined, resolution = 1.2)
+combined <- RunUMAP(combined, dims = 1:13, verbose = FALSE)
+
+# Final UMAP
+DimPlot(combined, reduction = "umap", label = TRUE) + scale_x_reverse() + scale_y_reverse() # Inverted plot (all cells - both conditions)
+DimPlot(combined, reduction = "umap", label = FALSE, pt.size = 0.3, cells = WhichCells(combined, expression = condition == "sham")) + scale_x_reverse() + scale_y_reverse() # Inverted plot (only sham -> change "sham" to "oxa if only oxa)
