@@ -1,0 +1,147 @@
+---
+title: "Cell number variation in oxa"
+author: "Dehais Vianney"
+---
+
+# Number of cell variation in oxa vs sham
+cluster_count_change <- combined@meta.data %>%
+  group_by(seurat_clusters, condition) %>%
+  summarise(
+    n_cells = n(),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = condition,
+    values_from = n_cells,
+    values_fill = 0
+  ) %>%
+  mutate(
+    percent_change = ifelse(
+      sham > 0,
+      ((oxa - sham) / sham) * 100,
+      NA_real_
+    )
+  )
+
+# Plot
+ggplot(
+  cluster_count_change,
+  aes(
+    x = reorder(seurat_clusters, -percent_change),
+    y = percent_change,
+    fill = seurat_clusters
+  )
+) +
+  geom_col(
+    color = "black",
+    width = 0.7,
+    alpha = 0.8
+  ) +
+  geom_hline(
+    yintercept = 0,
+    linetype = "solid",
+    color = "black"
+  ) +
+  geom_text(
+    aes(
+      label = paste0(round(percent_change, 1), "%"),
+      vjust = ifelse(percent_change >= 0, -0.5, 1.5)
+    ),
+    size = 4,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = umap_colors
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0.2, 0.2))
+  ) +
+  labs(
+    title = "Raw Change in Cell Counts",
+    subtitle = "Direct comparison of OXA vs SHAM (captured cell numbers)",
+    x = "Clusters (ordered by relative change)",
+    y = "Relative Change (%)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      face = "bold"
+    ),
+    legend.position = "none"
+  )
+
+# Cluster proportion variation
+cluster_proportion_change <- combined@meta.data %>%
+  group_by(condition, seurat_clusters) %>%
+  summarise(
+    n_cells = n(),
+    .groups = "drop"
+  ) %>%
+  group_by(condition) %>%
+  mutate(
+    proportion = (n_cells / sum(n_cells)) * 100
+  ) %>%
+  ungroup() %>%
+  select(seurat_clusters, condition, proportion) %>%
+  pivot_wider(
+    names_from = condition,
+    values_from = proportion,
+    values_fill = 0
+  ) %>%
+  mutate(
+    percent_change = ifelse(
+      sham > 0,
+      ((oxa - sham) / sham) * 100,
+      NA_real_
+    )
+  )
+
+ggplot(
+  cluster_proportion_change,
+  aes(
+    x = reorder(seurat_clusters, -percent_change),
+    y = percent_change,
+    fill = seurat_clusters
+  )
+) +
+  geom_col(
+    color = "black",
+    width = 0.7,
+    alpha = 0.8
+  ) +
+  geom_hline(
+    yintercept = 0,
+    linetype = "solid",
+    color = "black"
+  ) +
+  geom_text(
+    aes(
+      label = paste0(round(percent_change, 1), "%"),
+      vjust = ifelse(percent_change >= 0, -0.5, 1.5)
+    ),
+    size = 4,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = umap_colors
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0.2, 0.2))
+  ) +
+  labs(
+    title = "Relative Change in Cluster Proportions",
+    subtitle = "Comparison of OXA vs SHAM after normalization within each condition",
+    x = "Clusters (ordered by relative change)",
+    y = "Relative Change (%)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+       face = "bold"
+    ),
+    legend.position = "none"
+  )
