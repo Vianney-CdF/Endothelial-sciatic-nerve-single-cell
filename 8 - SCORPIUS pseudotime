@@ -1,6 +1,10 @@
+---
+title: "SCORPIUS pseudotime"
+author: "Dehais Vianney"
+---
 
 
-# Adapt it to the clusters of interest
+# Adapt it to the clusters of interest and condition (sham and oxa)
 sham_pseudotime <- sham_sub
 
 DefaultAssay(sham_pseudotime) <- "SCT"
