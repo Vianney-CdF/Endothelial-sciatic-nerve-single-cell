@@ -1,0 +1,89 @@
+DefaultAssay(sham_sub) <- "SCT"
+
+Idents(sham_sub) <- "seurat_clusters"
+Idents(sham_sub) <- droplevels(Idents(sham_sub))
+
+levels(sham_sub[["SCT"]]) # verification/control
+
+markers_sham <- FindAllMarkers(
+  sham_sub,
+  assay = "SCT",
+  only.pos = TRUE,
+  min.pct = 0.25, # genes expressed in at least 25% of the cells of the cluster
+  logfc.threshold = 0.25 # log to be adjusted (0.5 tested and no significant changes observed)
+)
+
+# Significatif markers only (0,05 pvalue)
+markers_sham_sig <- markers_sham %>%
+  filter(p_val_adj < 0.05)
+# Top 5
+top5_markers <- markers_sham_sig %>%
+  group_by(cluster) %>%
+  slice_max(
+    order_by = avg_log2FC,
+    n = 5,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+
+# Top 10
+top10_markers <- markers_sham_sig %>%
+  group_by(cluster) %>%
+  slice_max(
+    order_by = avg_log2FC,
+    n = 10,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+
+# Top 50
+top50_markers <- markers_sham_sig %>%
+  group_by(cluster) %>%
+  slice_max(
+    order_by = avg_log2FC,
+    n = 50,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+
+# Dotplot top genes per cluster
+genes_to_plot <- top10_markers %>%
+  arrange(cluster) %>%
+  pull(gene) %>%
+  unique()
+
+DotPlot(
+  sham_sub,
+  features = genes_to_plot,
+  assay = "SCT",
+  dot.scale = 6
+) +
+  RotatedAxis() +
+  scale_colour_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0
+  ) +
+  theme(
+    axis.text.x = element_text(
+      size = 8,
+      face = "italic",
+      angle = 45,
+      hjust = 1
+    ),
+    axis.text.y = element_text(
+      size = 10,
+      face = "bold"
+    ),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 1
+    )
+  ) +
+  labs(
+    title = "Signature des Clusters (Top 10 Marqueurs) - SHAM",
+    x = "Marqueurs",
+    y = "Identité Cluster"
+  )
