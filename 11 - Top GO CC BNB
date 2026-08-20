@@ -1,0 +1,155 @@
+---
+title: "Top GO CC BNB"
+author: "Dehais Vianney"
+---
+
+# Keep only BNB clusters
+selected_clusters <- c("2", "5", "9", "8", "4")
+
+Idents(combined) <- "seurat_clusters"
+
+combined_selected <- subset(
+  combined,
+  idents = selected_clusters
+)
+
+Idents(combined_selected) <- droplevels(Idents(combined_selected))
+
+DefaultAssay(combined_selected) <- "SCT"
+
+combined_selected <- RunPCA(combined_selected, npcs = 30, verbose = FALSE)
+
+combined_selected <- FindNeighbors(combined_selected, dims = 1:13)
+
+combined_selected <- FindClusters(combined_selected, resolution = 0.5)
+
+combined_selected <- RunUMAP(combined_selected, dims = 1:13)
+
+# Check retained clusters
+levels(Idents(combined_selected))
+
+table(combined_selected$condition, combined_selected$seurat_clusters)
+
+DimPlot(combined_selected, reduction = "umap", group.by = "seurat_clusters")
+
+# Top CC BNB
+DefaultAssay(sham_selected) <- "SCT"
+
+Idents(sham_selected) <- "seurat_clusters"
+Idents(sham_selected) <- droplevels(Idents(sham_selected))
+
+target_clusters <- levels(Idents(sham_selected))
+
+# Check clusters and cell numbers
+target_clusters
+table(Idents(sham_selected))
+
+expressed_genes_cc <- list()
+
+for (cl in target_clusters) {
+
+  message("--- Processing Cluster ", cl, " ---")
+
+  cluster_sub <- subset(
+    sham_selected,
+    idents = cl
+  )
+
+ avg_exp <- AverageExpression(
+    cluster_sub,
+    assays = "SCT",
+    layer = "data",
+    return.seurat = FALSE
+  )$SCT
+
+  expressed_genes <- rownames(avg_exp)[
+    avg_exp[, 1] > 0.5
+  ]
+
+  message(
+    "Cluster ", cl, ": ",
+    length(expressed_genes),
+    " expressed genes"
+  )
+
+  if (length(expressed_genes) > 10) {
+
+    ids <- bitr(
+      expressed_genes,
+      fromType = "SYMBOL",
+      toType = "ENTREZID",
+      OrgDb = org.Mm.eg.db
+    )
+
+    expressed_genes_cc[[paste0("Cluster_", cl)]] <-
+      unique(ids$ENTREZID)
+  }
+}
+
+names(expressed_genes_cc)
+
+sapply(expressed_genes_cc, length)
+
+message(
+  "Running CC comparison across BNB sham clusters..."
+)
+
+comparaison_cc <- compareCluster(
+  geneClusters = expressed_genes_cc,
+  fun = "enrichGO",
+  OrgDb = org.Mm.eg.db,
+  ont = "CC",
+  pvalueCutoff = 0.05,
+  minGSSize = 15,
+  maxGSSize = 600
+)
+
+comparaison_cc_simple <- clusterProfiler::simplify(
+  comparaison_cc,
+  cutoff = 0.5,
+  by = "p.adjust",
+  select_fun = min
+)
+
+nrow(as.data.frame(comparaison_cc_simple))
+
+head(as.data.frame(comparaison_cc_simple))
+
+p_cc <- enrichplot::dotplot(
+  comparaison_cc_simple,
+  showCategory = 10,
+  includeAll = TRUE
+) +
+  coord_flip() +
+  scale_color_gradientn(
+    colors = c("red", "white", "blue"),
+    name = "p-adj"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      face = "bold",
+      color = "black",
+      size = 8
+    ),
+    axis.text.y = element_text(
+      size = 10,
+      face = "bold",
+      color = "black"
+    ),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.5
+    )
+  ) +
+  labs(
+    title = "CC Comparison BNB sham clusters",
+    x = NULL
+  )
+
+print(p_cc)
+
+
