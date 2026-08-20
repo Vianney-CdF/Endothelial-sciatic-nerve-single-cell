@@ -1,3 +1,8 @@
+---
+title: "BBB enrichment score Munji et al., 2019"
+author: "Dehais Vianney"
+---
+
 DefaultAssay(sham_selected) <- "SCT"
 
 Idents(sham_selected) <- "seurat_clusters"
