@@ -1,0 +1,82 @@
+
+
+bbb_genes <- unique(bbb_exhaustive_munji)
+
+# Keep only BBB genes that are actually detectable in the dataset (explains why it reduces the initial list)
+bbb_genes_present <- intersect(
+  bbb_genes,
+  rownames(sham_selected[["SCT"]])
+)
+
+message(
+  "BBB genes present in the dataset: ",
+  length(bbb_genes_present),
+  " / ",
+  length(bbb_genes)
+)
+
+DefaultAssay(sham_selected) <- "SCT"
+
+avg_expression_bnb <- AverageExpression(
+  sham_selected,
+  assays = "SCT",
+  layer = "data",
+  return.seurat = FALSE
+)$SCT
+
+# Same threshold 0,5
+bnb_genes <- rownames(avg_expression_bnb)[
+  avg_expression_bnb[, 1] > 0.5
+]
+
+message(
+  "BNB genes with mean expression > 0.5: ",
+  length(bnb_genes)
+)
+
+bbb_specific <- setdiff(
+  bbb_genes_present,
+  bnb_genes
+)
+
+bnb_specific <- setdiff(
+  bnb_genes,
+  bbb_genes_present
+)
+
+bbb_bnb_common <- intersect(
+  bbb_genes_present,
+  bnb_genes
+)
+
+message("BBB-specific genes: ", length(bbb_specific))
+message("BNB-specific genes: ", length(bnb_specific))
+message("Shared BBB/BNB genes: ", length(bbb_bnb_common))
+
+fit_euler <- eulerr::euler(
+  c(
+    "BBB (Munji)" = length(bbb_specific),
+    "BNB (SHAM)" = length(bnb_specific),
+    "BBB (Munji)&BNB (SHAM)" = length(bbb_bnb_common)
+  )
+)
+
+plot(
+  fit_euler,
+  quantities = TRUE,
+  fill = c("lightblue", "seagreen2"),
+  alpha = 0.6,
+  edges = list(
+    lwd = 1.5,
+    col = "black"
+  ),
+  labels = list(
+    font = 2,
+    cex = 1
+  ),
+  main = "BBB vs BNB Euler"
+)
+
+bbb_bnb_common
+bbb_specific
+bnb_specific
