@@ -1,0 +1,158 @@
+# BBB specific
+ids_bbb_specific <- bitr(
+  bbb_specific,
+  fromType = "SYMBOL",
+  toType = "ENTREZID",
+  OrgDb = org.Mm.eg.db
+)
+
+go_bbb_specific <- enrichGO(
+  gene = unique(ids_bbb_specific$ENTREZID),
+  OrgDb = org.Mm.eg.db,
+  ont = "CC",
+  pvalueCutoff = 0.05,
+  minGSSize = 1,
+  maxGSSize = 800,
+  readable = TRUE
+)
+
+# Remove redundant GO terms
+go_bbb_specific_simple <- clusterProfiler::simplify(
+  go_bbb_specific,
+  cutoff = 0.5,
+  by = "p.adjust",
+  select_fun = min
+)
+
+df_bbb_specific <- as.data.frame(go_bbb_specific_simple) %>%
+  slice_max(
+    order_by = Count,
+    n = 10,
+    with_ties = FALSE
+  ) %>%
+  mutate(
+    Description = factor(
+      Description,
+      levels = rev(unique(Description))
+    )
+  )
+
+# BNB specific
+ids_bnb_specific <- bitr(
+  bnb_specific,
+  fromType = "SYMBOL",
+  toType = "ENTREZID",
+  OrgDb = org.Mm.eg.db
+)
+
+go_bnb_specific <- enrichGO(
+  gene = unique(ids_bnb_specific$ENTREZID),
+  OrgDb = org.Mm.eg.db,
+  ont = "CC",
+  pvalueCutoff = 0.05,
+  minGSSize = 1,
+  maxGSSize = 800,
+  readable = TRUE
+)
+
+# Remove redundant GO terms
+go_bnb_specific_simple <- clusterProfiler::simplify(
+  go_bnb_specific,
+  cutoff = 0.5,
+  by = "p.adjust",
+  select_fun = min
+)
+
+# Top 10 CC terms
+df_bnb_specific <- as.data.frame(go_bnb_specific_simple) %>%
+  slice_max(
+    order_by = Count,
+    n = 10,
+    with_ties = FALSE
+  ) %>%
+  mutate(
+    Description = factor(
+      Description,
+      levels = rev(unique(Description))
+    )
+  )
+
+# BBB plot
+p_bbb_specific <- ggplot(
+  df_bbb_specific,
+  aes(
+    x = Count,
+    y = Description,
+    fill = p.adjust
+  )
+) +
+  geom_col(
+    width = 0.7,
+    color = "black",
+    linewidth = 0.3
+  ) +
+  scale_fill_gradientn(
+    colors = c("blue", "white", "red"),
+    name = "p-adj"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(
+      size = 8,
+      face = "bold",
+      color = "black"
+    ),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.5
+    )
+  ) +
+  labs(
+    title = "BBB specific CC",
+    subtitle = "Munji et al. BBB genes not expressed in BNB",
+    x = "Gene Count",
+    y = NULL
+  )
+
+# BNB plot
+p_bnb_specific <- ggplot(
+  df_bnb_specific,
+  aes(
+    x = Count,
+    y = Description,
+    fill = p.adjust
+  )
+) +
+  geom_col(
+    width = 0.7,
+    color = "black",
+    linewidth = 0.3
+  ) +
+  scale_fill_gradientn(
+    colors = c("blue", "white", "red"),
+    name = "p-adj"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(
+      size = 8,
+      face = "bold",
+      color = "black"
+    ),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.5
+    )
+  ) +
+  labs(
+    title = "BNB specific CC",
+    subtitle = "Genes expressed in BNB but absent from the Munji et al. BBB signature",
+    x = "Gene Count",
+    y = NULL
+  )
+
+print(
+  p_bbb_specific + p_bnb_specific
+)
