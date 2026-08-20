@@ -1,0 +1,149 @@
+DefaultAssay(sham_selected) <- "SCT"
+
+Idents(sham_selected) <- "seurat_clusters"
+Idents(sham_selected) <- droplevels(Idents(sham_selected))
+
+levels(Idents(sham_selected))
+table(Idents(sham_selected))
+
+bbb_exhaustive_munji <- c("Spock2", "Slco1a4", "Slco1c1", "Slc2a1", "Slc22a8", "Abcb1a", "Itm2a", "Lef1", "Slc7a5", "Itih5", "Bsg", "Mfsd2a", "Lrp8", "Cxcl12", "Pglyrp1", "Zic3", 
+  "Slc38a3", "Abhd2", "Tfrc", "Apcdd1", "Slc6a6", "Prom1", "Apod", "Ccdc141", 
+  "Slc19a3", "Flt1", "Ptn", "Foxf2", "Slc39a10", "Sparcl1", "Zic2", "Slc1a1", 
+  "Atp10a", "A930038C07Rik", "Foxq1", "Fosb", "Stra6", "Slc7a1", "9430020K01Rik", "Vwa1", "Pltp", "Efr3b", "Gpcpd1", "Sgpp2", "Hiat1", "Igf1r", "Ocln", "Slc16a4", "Ablim1", "Nebl", "Ildr2", "Edn3", "Nr4a1", "Rab11fip1", "Ldlrad3", "Slc35f2", "Slc38a5", "Tmc7", "Sgms1", "Sema7a", "Elovl7", "Ptgds", "Tiam1", "Lrrn3", "Hbb-b1", "Pcdh19", "Plekhh2", "Sorbs2", "Fry", "Ttyh2", "Zic5", "Cobll1", "Lsr", "Gm9946", "Ddc", "Cyr61", "Pdxk", "Bche", "Tspan5", "Pcp4l1", "Gsta4", "Hbb-b2", "Abcc4", "Degs2", "2610019F03Rik", "Abcc6", "Paqr5", "Glul", "Gm694", "Utrn", "Mcf2l", "Far2", "Rad54b", "Hmgcs2", "Shroom1", "Maoa", "Extl3", "Itga6", "Slc30a1", "Mfsd7c", "Tsc22d1", "Tob1", "Kbtbd11", "Fam13c", "Axin2", "Foxc1", "Tcf7", "Foxl2os", "Hba-a2", "Ppapdc2", "Polk", "Synm", "Ly75", 
+"Abcg2", "Fam55d", "Foxl2", "Notum", "Tmeff1", "Kcp", "Net1", "Usp53", "Esyt2", "2610035F20Rik", "Fyco1", "Palmd", "Unc13c", "Isyna1", "Nes", "Usp33", "Slc16a2", "5430407P10Rik", "A930033H14Rik", "St6galnac2", "Mkl2", "Col4a3bp", "Gstm7", "Slc9a2", "Reck", "Max", "Parvb", "Alas1", "Kif26a", "Tgfb2", "Fzd6", "Rnf144b", "Nhsl1", "Vstm2b", "Ism1", "Gm12868", "Wnt5a", "Ifnar1", "Grb7", "Wnk2", "Zfp366", "Sox9", "Gm15998", "Dnahc3", "Mmp25", "Erg", "Lgr4", "Insr", "Def6", "St8sia4", "C130074G19Rik", "Agrn", "Aqp11", "B230120H23Rik", "Maob", "Enc1", "F5", "4930594M22Rik", "Klf12", "Nav2", "Gm14021", "Gm14066", "Cdh2", "Rhobtb1", "Efhc2", "Nanos1", "Il6ra", "Mob3b", "Egr3", "Cdc42ep3", "Dixdc1", "Znrf3", "Ppard", "Frmd5", "Dusp6", "Layn", "St3gal6", "Sos1", "Gm129", "Fut8", "Osbpl1a", "C530008M17Rik", "Tbx1", "Rasgrp4", "Slc6a13", "Mir1957", "Gm609", "Sh3bp4", "Plekhg5", "Ddi1", "Rbm20", "B4galt4", "Tbc1d4", "1810062O18Rik", "Smox", "Lnx2", "Pnpla6", "Sestd1", "Murc", "Srgap2", 
+"1700026D11Rik", "Gm16101", "Slc4a1", "Pmepa1", "Tgfa", "E030002O03Rik", "Sorbs1", "Gpr4", "Usp54", "Slc44a5", "Snord35b", "Gpr85", "Ttll7", "Lrrc49", "D330022K07Rik", "Slc7a11", "Junb", "Frmd4b", "Gm1614", "Akr1c14", "Nfic", "Klf11", "Tbc1d14", "Gse1", "Nomo1", "Dcun1d3", "Thsd1", "Gng7", "Ildr2", "Gjb2", "Slc7a3", "Alas2", "Mtap7", "Agr2", "1700018A04Rik", "Anxa9", 
+  "Ret", "Baiap2l1", "Neurl2", "Ppp3cc", "Lrp6", "Fam118a", "Pcmt1", "Mboat1", 
+  "Smad7", "Aldh5a1", "Jund", "Itga4", "Dnahc6", "A530084C06Rik", "Ndrg1", 
+  "Slc5a2", "Arhgef9", "Cd320", "Arl4a", "BC039771", "Slc36a1", "Ncoa1", 
+  "Htra3", "Cldn6", "Zc3h4", "Gbe1", "Gab1", "Kcnj2", "Frem2", "Gm17622", 
+  "Gpr160", "Ppm1h", "Serinc5", "Acacb", "7SK", "Tecrl", "Lamc3", "Mycl1", 
+  "Cnot6l", "5S_rRNA", "6430527G18Rik", "Acsl3", "Zfp865", "1520402A15Rik", 
+  "Napepld", "Slc5a6", "Fam63a", "Tpd52", "Gm12867", "Tmem123", "Pcca", 
+  "Rcan2", "Bspry", "Otud7b", "Gm15907", "Zfp3", "Fam129b", "Zfp423", "Vil1", 
+  "Ccng2", "Mfsd4", "Hist2h2be", "Bambi-ps1", "Stk11ip", "Cdc42se1", "D730039F16Rik", "Skap1", "Foxo3", "D130062J21Rik", "Tmem8", "Glb1", "Mtmr6", "Al661453", "Sytl1", "Gm15423", "Ribc1", "2310022B05Rik", "Ccdc61", "6330403K07Rik", "Mif4gd", "Jmy", "Glcci1", "Wasf3", "Gm5127", "Vangl2", "Mtap9", "Kif23", 
+  "Dhcr7", "Srf", "Phf2", "Pomc", "Thra", "Faim", "Zfp941", "Kcnnd3", "2310014F06Rik", "Cachd1", "Ceacam2", "D930048N14Rik", "Srsf12", "Zfp219", "Bend5", "Nacc1", "Pdk2", "Gm13535", "Trim12a", "Fbxo18", "9030425E11Rik", "Dag1", "Lzts1", "Krt222", "Gm16882", "Slc27a1", "Fgf13", "Evpl", "Inpp5f", "Trim6", "Gm16098", "Mxd3", "Zfp668", "Syt7", "Acot2", "Anp32-ps", "Zswim1", "Porcn", "Prr12", "2810004N23Rik", "Mta1", "Cnnm2", "Mllt11", "Usp42", 
+  "B630019A10Rik", "Surf6", "Acn9", "Kif3b", "Fam71a", "Mink1", "Tmub1", "4430402I18Rik", "Tprn", "Fam13a", "Sf3b4", "4930545L23Rik", "A2ld1", "4933423P22Rik", "Utp14b", "Gm15738", "Zbtb45", "Sass6", "Gm15478", "Zfp651", "Uhrf1bp1", "Ccdc92", "Gm9844", "Nt5c2", "Rnf168", "Nsun5", 
+  "Dnajc14", "Rfxank", "Cabyr", "Cox4nb", "Ints9", "Ankrd6", "Ppp1r35", 
+  "RP23-397G23.1", "Hells", "ZfpTacc3", "Zfp783", "Tmem184a", "Kdm5b", 
+  "Aph1a", "Dvl3", "Ssbp4", "Gm12403", "Tymp", "Eftud2", "Zfp930", "Flt3l", 
+  "Farp2", "6330503K22Rik", "Gm5815", "Rrnad1", "Rep15", "Spata5l1", "Pcx", 
+  "Fat2", "Fuca2", "Ccdc85c", "Rad1", "Gm7367", "Acat2", "Fam134c", "3010003L21Rik", "Gm16581", "Cep97", "2810030E01Rik", "Narf", "Ppp1r8", "Slc16a6", "Alg6", "Gm7935", "Cep164", "Tchp", "Prdm9", "Nfatc2ip", "Acot6", "Eml2", "Sugp2", "Gm11944", "1810019N24Rik", "Cntrob", "Smap1", "Gm6781", "Zfp647", "Mipol1", "Solh", "A130010J15Rik", "U6", "Zmynd19", "Gmmp23", "Top1mt", "Cyp2t4", 
+  "Nudt12", "Wdr83", "Scfd2", "Ggnbp1", "Aldh4a1", "Snrnp35", "Cd3eap", 
+  "Bnip1", "Hinfp", "Plekhn1", "Gm16600", "Lactb", "Gm13498", "Nek3", "Gm15190", 
+  "Pla2g6", "Gm12430", "Zfp707", "Tada2a", "Gm15784", "Ap3s1-ps1", "Gm15784")
+
+# Remove potential duplicated genes
+bbb_exhaustive_munji <- unique(bbb_exhaustive_munji)
+
+# Keep only genes present in the SCT assay
+genes_bbb_present <- intersect(
+  bbb_exhaustive_munji,
+  rownames(sham_selected[["SCT"]])
+)
+
+# Check missing genes
+genes_bbb_missing <- setdiff(
+  bbb_exhaustive_munji,
+  rownames(sham_selected[["SCT"]])
+)
+
+message(
+  "BBB genes found: ",
+  length(genes_bbb_present),
+  " / ",
+  length(bbb_exhaustive_munji)
+)
+
+message(
+  "BBB genes missing: ",
+  length(genes_bbb_missing)
+)
+
+set.seed(123)
+
+sham_selected <- AddModuleScore(
+  object = sham_selected,
+  features = list(genes_bbb_present),
+  name = "BBB_Munji",
+  assay = "SCT",
+  seed = 123
+)
+
+sham_selected$BBB_Munji_score <- sham_selected$BBB_Munji1
+
+Idents(combined_selected) <- "seurat_clusters"
+
+p_umap_selected <- DimPlot(combined_selected)
+
+recluster_colors <- ggplot_build(p_umap_selected)$data[[1]] %>%
+  select(group, colour) %>%
+  distinct() %>%
+  arrange(group) %>%
+  pull(colour)
+
+names(recluster_colors) <- levels(Idents(combined_selected))
+
+VlnPlot(
+  sham_selected,
+  features = "BBB_Munji_score",
+  pt.size = 0.1,
+  cols = recluster_colors
+) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_text(
+      face = "bold"
+    ),
+    plot.title = element_text(
+      size = 11,
+      face = "bold"
+    )
+  ) +
+  labs(
+    title = "BBB enrichment score"
+  )
+
+bbb_score_by_cluster <- sham_selected@meta.data %>%
+  group_by(seurat_clusters) %>%
+  summarise(
+    mean_BBB_score = mean(BBB_Munji_score, na.rm = TRUE),
+    median_BBB_score = median(BBB_Munji_score, na.rm = TRUE),
+    n_cells = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(mean_BBB_score))
+
+bbb_score_by_cluster
+
+ggplot(
+  bbb_score_by_cluster,
+  aes(
+    x = reorder(
+      as.factor(seurat_clusters),
+      mean_BBB_score
+    ),
+    y = mean_BBB_score,
+    fill = as.factor(seurat_clusters)
+  )
+) +
+  geom_col(
+    width = 0.7,
+    color = "black",
+    alpha = 0.8
+  ) +
+  coord_flip() +
+  scale_fill_manual(
+    values = recluster_colors
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    axis.text.y = element_text(
+      face = "bold"
+    ),
+    legend.position = "none"
+  ) +
+  labs(
+    title = "BBB enrichment score",
+    x = "Cluster",
+    y = "Mean BBB Module Score"
+  )
