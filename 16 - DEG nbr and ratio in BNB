@@ -1,3 +1,8 @@
+---
+title: "DEG number and ratio per BNB cluster in oxa vs sham"
+author: "Dehais Vianney"
+---
+
 deg_object <- combined_selected
 
 DefaultAssay(deg_object) <- "RNA"
