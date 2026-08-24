@@ -1,0 +1,224 @@
+DefaultAssay(sham_selected) <- "SCT"
+Idents(sham_selected) <- "seurat_clusters"
+Idents(sham_selected) <- droplevels(Idents(sham_selected))
+
+target_clusters <- levels(Idents(sham_selected))
+
+# Common genes and dotplot
+
+shared_bbb_bnb_genes <- bbb_bnb_common
+
+message("Common BBB and BNB genes")
+message(
+  "Number of common genes before filtering",
+  length(shared_bbb_bnb_genes)
+)
+
+dotplot_data_shared <- DotPlot(
+  sham_selected,
+  features = shared_bbb_bnb_genes,
+  idents = target_clusters,
+  assay = "SCT"
+)$data
+
+# Keep genes expressed in atleast 25% of cells
+shared_genes_25 <- dotplot_data_shared %>%
+  filter(pct.exp >= 25) %>%
+  pull(features.plot) %>%
+  unique() %>%
+  as.character()
+
+message("Filtering BBB and BNB common genes")
+message(
+  "Number of common genes before filtering",
+  length(shared_bbb_bnb_genes)
+)
+
+message(
+  "Number of common genes after filtering",
+  length(shared_genes_25)
+)
+
+shared_dotplot <- DotPlot(
+  sham_selected,
+  features = shared_genes_25,
+  idents = target_clusters,
+  assay = "SCT"
+) +
+  coord_flip() +
+  scale_color_gradientn(
+    colors = c("blue", "white", "red"),
+    name = "Average\nExpression"
+  ) +
+  scale_size_continuous(
+    name = "% Expressing"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      face = "bold",
+      color = "black",
+      size = 10,
+      angle = 0
+    ),
+    axis.text.y = element_text(
+      face = "italic",
+      color = "black",
+      size = 8
+    ),
+    panel.grid.major = element_line(
+      color = "grey95"
+    ),
+    plot.title = element_text(
+      face = "bold",
+      size = 12
+    )
+  ) +
+  labs(
+    title = "Common gene signature",
+    subtitle = "Filtered common genes",
+    x = "Common BBB and BNB Genes",
+    y = "Sham BNB clusters"
+  )
+
+print(shared_dotplot)
+
+
+# BP and CC common genes
+
+ids_shared_25 <- bitr(
+  shared_genes_25,
+  fromType = "SYMBOL",
+  toType = "ENTREZID",
+  OrgDb = org.Mm.eg.db
+)
+
+ids_shared_25 <- unique(ids_shared_25$ENTREZID)
+
+go_shared_bp <- enrichGO(
+  gene = ids_shared_25,
+  OrgDb = org.Mm.eg.db,
+  ont = "BP",
+  pvalueCutoff = 0.05,
+  minGSSize = 5,
+  maxGSSize = 500,
+  readable = TRUE
+)
+
+go_shared_bp_simple <- clusterProfiler::simplify(
+  go_shared_bp,
+  cutoff = 0.5,
+  by = "p.adjust",
+  select_fun = min
+)
+
+df_shared_bp <- as.data.frame(go_shared_bp_simple) %>%
+  slice_max(
+    order_by = Count,
+    n = 10,
+    with_ties = FALSE
+  ) %>%
+  mutate(
+    Description = factor(
+      Description,
+      levels = rev(unique(Description))
+    )
+  )
+
+  go_shared_cc <- enrichGO(
+  gene = ids_shared_25,
+  OrgDb = org.Mm.eg.db,
+  ont = "CC",
+  pvalueCutoff = 0.05,
+  minGSSize = 3,
+  maxGSSize = 500,
+  readable = TRUE
+)
+
+go_shared_cc_simple <- clusterProfiler::simplify(
+  go_shared_cc,
+  cutoff = 0.6,
+  by = "p.adjust",
+  select_fun = min
+)
+
+df_shared_cc <- as.data.frame(go_shared_cc_simple) %>%
+  slice_max(
+    order_by = Count,
+    n = 10,
+    with_ties = FALSE
+  ) %>%
+  mutate(
+    Description = factor(
+      Description,
+      levels = rev(unique(Description))
+    )
+  )
+
+  plot_shared_bp <- ggplot(
+  df_shared_bp,
+  aes(
+    x = Count,
+    y = Description,
+    fill = p.adjust
+  )
+) +
+  geom_col(
+    width = 0.7,
+    color = "black",
+    linewidth = 0.3
+  ) +
+  scale_fill_gradientn(
+    colors = c("red", "white", "blue"),
+    name = "p-adj"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(
+      size = 8,
+      face = "bold",
+      color = "black"
+    )
+  ) +
+  labs(
+    title = "Top GO BP - Shared BBB / BNB Genes",
+    subtitle = "Shared genes expressed in >=25% of cells",
+    x = "Gene Count",
+    y = NULL
+  )
+
+  plot_shared_cc <- ggplot(
+  df_shared_cc,
+  aes(
+    x = Count,
+    y = Description,
+    fill = p.adjust
+  )
+) +
+  geom_col(
+    width = 0.7,
+    color = "black",
+    linewidth = 0.3
+  ) +
+  scale_fill_gradientn(
+    colors = c("red", "white", "blue"),
+    name = "p-adj"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(
+      size = 8,
+      face = "bold",
+      color = "black"
+    )
+  ) +
+  labs(
+    title = "Top GO CC - Shared BBB / BNB Genes",
+    subtitle = "Shared genes expressed in >=25% of cells",
+    x = "Gene Count",
+    y = NULL
+  )
+
+  print(
+  plot_shared_bp + plot_shared_cc
+)
