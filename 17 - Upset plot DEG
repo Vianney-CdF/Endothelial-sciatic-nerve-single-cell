@@ -1,0 +1,103 @@
+up_genes_by_cluster <- lapply(
+  deg_cluster_list,
+  function(deg) {
+
+    rownames(
+      deg[
+        deg$p_val_adj < 0.05 &
+        deg$avg_log2FC > 0.25,
+      ]
+    )
+  }
+)
+
+down_genes_by_cluster <- lapply(
+  deg_cluster_list,
+  function(deg) {
+
+    rownames(
+      deg[
+        deg$p_val_adj < 0.05 &
+        deg$avg_log2FC < -0.25,
+      ]
+    )
+  }
+)
+
+names(up_genes_by_cluster) <- sub(
+  "cluster_",
+  "Cluster ",
+  names(up_genes_by_cluster)
+)
+
+names(down_genes_by_cluster) <- sub(
+  "cluster_",
+  "Cluster ",
+  names(down_genes_by_cluster)
+)
+
+sapply(up_genes_by_cluster, length)
+sapply(down_genes_by_cluster, length)
+
+library(UpSetR)
+
+# Upset plot up
+upset_matrix_up <- fromList(
+  up_genes_by_cluster
+)
+
+upset(
+  upset_matrix_up,
+  nsets = length(up_genes_by_cluster),
+  nintersects = 15,
+  order.by = "freq",
+
+  sets.bar.color = "red",
+  main.bar.color = "gray30",
+  matrix.color = "black",
+
+  text.scale = c(
+    1.3,
+    1.2,
+    1.1,
+    1.1,
+    1.2,
+    1.2
+  ),
+  point.size = 3.5,
+  line.size = 0.8,
+
+  mainbar.y.label = "Upregulated DEG",
+  sets.x.label = "Upregulated DEG per cluster"
+)
+
+# Upset plot down
+upset_matrix_down <- fromList(
+  down_genes_by_cluster
+)
+
+upset(
+  upset_matrix_down,
+  nsets = length(down_genes_by_cluster),
+  nintersects = 15,
+  order.by = "freq",
+
+  sets.bar.color = "blue",
+  main.bar.color = "gray30",
+  matrix.color = "black",
+
+  text.scale = c(
+    1.3,
+    1.2,
+    1.1,
+    1.1,
+    1.2,
+    1.2
+  ),
+
+  point.size = 3.5,
+  line.size = 0.8,
+
+  mainbar.y.label = "Downregualted DEG",
+  sets.x.label = "Downregulated DEG per cluster"
+)
