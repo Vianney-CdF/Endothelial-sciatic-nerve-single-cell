@@ -3,21 +3,7 @@ title: "BBB vs BNB Euler"
 author: "Dehais Vianney"
 ---
 
-
-bbb_genes <- unique(bbb_exhaustive_munji)
-
-# Keep only BBB genes that are actually detectable in the dataset (explains why it reduces the initial list)
-bbb_genes_present <- intersect(
-  bbb_genes,
-  rownames(sham_selected[["SCT"]])
-)
-
-message(
-  "BBB genes present in the dataset: ",
-  length(bbb_genes_present),
-  " / ",
-  length(bbb_genes)
-)
+bbb_genes_all <- unique(bbb_exhaustive_munji)
 
 DefaultAssay(sham_selected) <- "SCT"
 
@@ -25,43 +11,35 @@ avg_expression_bnb <- AverageExpression(
   sham_selected,
   assays = "SCT",
   layer = "data",
+  group.by = "condition",
   return.seurat = FALSE
 )$SCT
 
-# Same threshold 0,5
 bnb_genes <- rownames(avg_expression_bnb)[
   avg_expression_bnb[, 1] > 0.5
 ]
 
-message(
-  "BNB genes with mean expression > 0.5: ",
-  length(bnb_genes)
+n_bbb_specific <- length(
+  setdiff(bbb_genes_all, bnb_genes)
 )
 
-bbb_specific <- setdiff(
-  bbb_genes_present,
-  bnb_genes
+n_bnb_specific <- length(
+  setdiff(bnb_genes, bbb_genes_all)
 )
 
-bnb_specific <- setdiff(
-  bnb_genes,
-  bbb_genes_present
+n_shared <- length(
+  intersect(bbb_genes_all, bnb_genes)
 )
 
-bbb_bnb_common <- intersect(
-  bbb_genes_present,
-  bnb_genes
-)
-
-message("BBB-specific genes: ", length(bbb_specific))
-message("BNB-specific genes: ", length(bnb_specific))
-message("Shared BBB/BNB genes: ", length(bbb_bnb_common))
+message("BBB-only genes: ", n_bbb_specific)
+message("BNB-only genes: ", n_bnb_specific)
+message("Shared BBB / BNB genes: ", n_shared)
 
 fit_euler <- eulerr::euler(
   c(
-    "BBB (Munji)" = length(bbb_specific),
-    "BNB (SHAM)" = length(bnb_specific),
-    "BBB (Munji)&BNB (SHAM)" = length(bbb_bnb_common)
+    "BBB (Munji)" = n_bbb_specific,
+    "BNB (SHAM)" = n_bnb_specific,
+    "BBB (Munji)&BNB (SHAM)" = n_shared
   )
 )
 
@@ -80,7 +58,3 @@ plot(
   ),
   main = "BBB vs BNB Euler"
 )
-
-bbb_bnb_common
-bbb_specific
-bnb_specific
