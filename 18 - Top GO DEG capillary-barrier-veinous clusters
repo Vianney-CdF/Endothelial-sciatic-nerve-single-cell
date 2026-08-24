@@ -1,0 +1,408 @@
+---
+title: "Top GO DEG of capillary-barrier et capillary-veinous clusters"
+author: "Dehais Vianney"
+---
+
+DefaultAssay(deg_object) <- "RNA"
+
+Idents(deg_object) <- "seurat_clusters"
+Idents(deg_object) <- droplevels(Idents(deg_object))
+
+table(
+  deg_object$seurat_clusters,
+  deg_object$condition
+)
+
+deg_cluster0_all <- FindMarkers(
+  object = deg_object,
+  ident.1 = "oxa",
+  ident.2 = "sham",
+  subset.ident = "0",
+  group.by = "condition",
+  assay = "RNA",
+  slot = "data",
+  logfc.threshold = 0,
+  min.pct = 0
+)
+
+deg_cluster1_all <- FindMarkers(
+  object = deg_object,
+  ident.1 = "oxa",
+  ident.2 = "sham",
+  subset.ident = "1",
+  group.by = "condition",
+  assay = "RNA",
+  slot = "data",
+  logfc.threshold = 0,
+  min.pct = 0
+)
+
+tested_genes_cluster0 <- rownames(
+  deg_cluster0_all
+)
+
+tested_genes_cluster1 <- rownames(
+  deg_cluster1_all
+)
+
+go_universe_0_1 <- intersect(
+  tested_genes_cluster0,
+  tested_genes_cluster1
+)
+
+message(
+  "Genes tested in Cluster 0: ",
+  length(tested_genes_cluster0)
+)
+
+message(
+  "Genes tested in Cluster 1: ",
+  length(tested_genes_cluster1)
+)
+
+message(
+  "Common GO universe C0/C1: ",
+  length(go_universe_0_1)
+)
+
+deg_cluster0_common <- deg_cluster0_all[
+  rownames(deg_cluster0_all) %in% go_universe_0_1,
+]
+
+deg_cluster1_common <- deg_cluster1_all[
+  rownames(deg_cluster1_all) %in% go_universe_0_1,
+]
+
+up_cluster0 <- rownames(
+  deg_cluster0_common[
+    deg_cluster0_common$p_val_adj < 0.05 &
+    deg_cluster0_common$avg_log2FC > 0.25,
+  ]
+)
+
+up_cluster1 <- rownames(
+  deg_cluster1_common[
+    deg_cluster1_common$p_val_adj < 0.05 &
+    deg_cluster1_common$avg_log2FC > 0.25,
+  ]
+)
+
+down_cluster0 <- rownames(
+  deg_cluster0_common[
+    deg_cluster0_common$p_val_adj < 0.05 &
+    deg_cluster0_common$avg_log2FC < -0.25,
+  ]
+)
+
+down_cluster1 <- rownames(
+  deg_cluster1_common[
+    deg_cluster1_common$p_val_adj < 0.05 &
+    deg_cluster1_common$avg_log2FC < -0.25,
+  ]
+)
+
+up_common_0_1 <- intersect(
+  up_cluster0,
+  up_cluster1
+)
+
+up_specific_cluster0 <- setdiff(
+  up_cluster0,
+  up_cluster1
+)
+
+up_specific_cluster1 <- setdiff(
+  up_cluster1,
+  up_cluster0
+)
+
+down_common_0_1 <- intersect(
+  down_cluster0,
+  down_cluster1
+)
+
+down_specific_cluster0 <- setdiff(
+  down_cluster0,
+  down_cluster1
+)
+
+down_specific_cluster1 <- setdiff(
+  down_cluster1,
+  down_cluster0
+)
+
+deg_overlap_summary <- data.frame(
+  category = c(
+    "Up - Cluster 0 specific",
+    "Up - Shared 0/1",
+    "Up - Cluster 1 specific",
+    "Down - Cluster 0 specific",
+    "Down - Shared 0/1",
+    "Down - Cluster 1 specific"
+  ),
+  n_genes = c(
+    length(up_specific_cluster0),
+    length(up_common_0_1),
+    length(up_specific_cluster1),
+    length(down_specific_cluster0),
+    length(down_common_0_1),
+    length(down_specific_cluster1)
+  )
+)
+
+deg_overlap_summary
+
+run_go_bp <- function(
+  genes,
+  title,
+  universe,
+  top_n = 10
+) {
+
+  genes <- intersect(
+    unique(genes),
+    universe
+  )
+
+  message(
+    "\n--- ",
+    title,
+    " ---"
+  )
+
+  message(
+    "Input genes in universe: ",
+    length(genes)
+  )
+
+  if (length(genes) == 0) {
+    message("No genes available for enrichment.")
+    
+    return(
+      list(
+        go = NULL,
+        go_simple = NULL,
+        table = NULL,
+        plot = NULL
+      )
+    )
+  }
+
+go_result <- enrichGO(
+    gene = genes,
+    universe = universe,
+    OrgDb = org.Mm.eg.db,
+    keyType = "SYMBOL",
+    ont = "BP",
+    pAdjustMethod = "BH",
+    pvalueCutoff = 0.05,
+    qvalueCutoff = 1,
+    minGSSize = 5,
+    maxGSSize = 500,
+    readable = TRUE
+  )
+
+  go_df <- as.data.frame(
+    go_result
+  )
+
+  message(
+    "Significant GO BP before simplify: ",
+    nrow(go_df)
+  )
+
+  if (nrow(go_df) == 0) {
+
+    message(
+      "No significant GO BP terms (BH adjusted p < 0.05)."
+    )
+
+    return(
+      list(
+        go = go_result,
+        go_simple = NULL,
+        table = NULL,
+        plot = NULL
+      )
+    )
+  }
+
+go_simple <- clusterProfiler::simplify(
+    go_result,
+    cutoff = 0.5,
+    by = "p.adjust",
+    select_fun = min
+  )
+
+  go_simple_df <- as.data.frame(
+    go_simple
+  )
+
+  go_top <- go_simple_df %>%
+    arrange(p.adjust) %>%
+    slice_head(n = top_n) %>%
+    mutate(
+      Description = factor(
+        Description,
+        levels = rev(Description)
+      )
+    )
+
+p <- ggplot(
+    go_top,
+    aes(
+      x = Count,
+      y = Description,
+      fill = p.adjust
+    )
+  ) +
+    geom_col(
+      width = 0.7,
+      color = "black",
+      linewidth = 0.3
+    ) +
+    scale_fill_gradientn(
+      colors = c("red", "white", "blue"),
+      name = "p-adj"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.y = element_text(
+        size = 8,
+        face = "bold",
+        color = "black"
+      ),
+      axis.text.x = element_text(
+        color = "black"
+      ),
+      panel.border = element_rect(
+        colour = "black",
+        fill = NA,
+        linewidth = 0.5
+      ),
+      plot.title = element_text(
+        face = "bold",
+        size = 11
+      )
+    ) +
+labs(
+      title = title,
+      x = "Gene Count",
+      y = NULL
+    )
+
+  return(
+    list(
+      go = go_result,
+      go_simple = go_simple,
+      table = go_top,
+      plot = p
+    )
+  )
+}
+
+go_up_cluster0 <- run_go_bp(
+  genes = up_specific_cluster0,
+  title = "Up in OXA - Cluster 0 Specific",
+  universe = go_universe_0_1
+)
+
+go_up_common <- run_go_bp(
+  genes = up_common_0_1,
+  title = "Up in OXA - Shared Clusters 0 and 1",
+  universe = go_universe_0_1
+)
+
+go_up_cluster1 <- run_go_bp(
+  genes = up_specific_cluster1,
+  title = "Up in OXA - Cluster 1 Specific",
+  universe = go_universe_0_1
+)
+
+go_down_cluster0 <- run_go_bp(
+  genes = down_specific_cluster0,
+  title = "Down in OXA - Cluster 0 Specific",
+  universe = go_universe_0_1
+)
+
+go_down_common <- run_go_bp(
+  genes = down_common_0_1,
+  title = "Down in OXA - Shared Clusters 0 and 1",
+  universe = go_universe_0_1
+)
+
+go_down_cluster1 <- run_go_bp(
+  genes = down_specific_cluster1,
+  title = "Down in OXA - Cluster 1 Specific",
+  universe = go_universe_0_1
+)
+
+if (!is.null(go_up_cluster0$plot)) {
+  print(go_up_cluster0$plot)
+}
+
+if (!is.null(go_up_common$plot)) {
+  print(go_up_common$plot)
+}
+
+if (!is.null(go_up_cluster1$plot)) {
+  print(go_up_cluster1$plot)
+}
+
+if (!is.null(go_down_cluster0$plot)) {
+  print(go_down_cluster0$plot)
+}
+
+if (!is.null(go_down_common$plot)) {
+  print(go_down_common$plot)
+}
+
+if (!is.null(go_down_cluster1$plot)) {
+  print(go_down_cluster1$plot)
+}
+
+# verify nbr significative pathways
+go_result_summary <- data.frame(
+  category = c(
+    "Up - Cluster 0 specific",
+    "Up - Shared 0/1",
+    "Up - Cluster 1 specific",
+    "Down - Cluster 0 specific",
+    "Down - Shared 0/1",
+    "Down - Cluster 1 specific"
+  ),
+  significant_GO_BP = c(
+    ifelse(
+      is.null(go_up_cluster0$go),
+      0,
+      nrow(as.data.frame(go_up_cluster0$go))
+    ),
+    ifelse(
+      is.null(go_up_common$go),
+      0,
+      nrow(as.data.frame(go_up_common$go))
+    ),
+    ifelse(
+      is.null(go_up_cluster1$go),
+      0,
+      nrow(as.data.frame(go_up_cluster1$go))
+    ),
+    ifelse(
+      is.null(go_down_cluster0$go),
+      0,
+      nrow(as.data.frame(go_down_cluster0$go))
+    ),
+    ifelse(
+      is.null(go_down_common$go),
+      0,
+      nrow(as.data.frame(go_down_common$go))
+    ),
+    ifelse(
+      is.null(go_down_cluster1$go),
+      0,
+      nrow(as.data.frame(go_down_cluster1$go))
+    )
+  )
+)
+
+go_result_summary
