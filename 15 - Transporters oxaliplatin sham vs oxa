@@ -1,3 +1,8 @@
+---
+title: "Oxaliplatin transporters comparison in both conditions"
+author: "Dehais Vianney"
+---
+
 oxa_selected <- subset(
   combined_selected,
   subset = condition == "oxa"
