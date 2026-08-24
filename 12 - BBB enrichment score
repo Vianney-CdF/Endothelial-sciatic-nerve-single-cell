@@ -37,38 +37,41 @@ bbb_exhaustive_munji <- c("Spock2", "Slco1a4", "Slco1c1", "Slc2a1", "Slc22a8", "
   "Bnip1", "Hinfp", "Plekhn1", "Gm16600", "Lactb", "Gm13498", "Nek3", "Gm15190", 
   "Pla2g6", "Gm12430", "Zfp707", "Tada2a", "Gm15784", "Ap3s1-ps1", "Gm15784")
 
-# Remove potential duplicated genes
-bbb_exhaustive_munji <- unique(bbb_exhaustive_munji)
+bbb_genes_all <- unique(bbb_exhaustive_munji)
 
-# Keep only genes present in the SCT assay
-genes_bbb_present <- intersect(
-  bbb_exhaustive_munji,
+message(
+  "Total unique genes in Munji BBB signature: ",
+  length(bbb_genes_all)
+)
+
+bbb_genes_detected <- intersect(
+  bbb_genes_all,
   rownames(sham_selected[["SCT"]])
 )
 
-# Check missing genes
-genes_bbb_missing <- setdiff(
-  bbb_exhaustive_munji,
+# Genes from the Munji signature that are absent from the SCT assay
+bbb_genes_not_detected <- setdiff(
+  bbb_genes_all,
   rownames(sham_selected[["SCT"]])
 )
 
 message(
-  "BBB genes found: ",
-  length(genes_bbb_present),
+  "BBB genes detected in SCT assay: ",
+  length(bbb_genes_detected),
   " / ",
-  length(bbb_exhaustive_munji)
+  length(bbb_genes_all)
 )
 
 message(
-  "BBB genes missing: ",
-  length(genes_bbb_missing)
+  "BBB genes not detected in SCT assay: ",
+  length(bbb_genes_not_detected)
 )
 
-set.seed(123)
+bbb_genes_not_detected
 
 sham_selected <- AddModuleScore(
   object = sham_selected,
-  features = list(genes_bbb_present),
+  features = list(bbb_genes_detected),
   name = "BBB_Munji",
   assay = "SCT",
   seed = 123
@@ -78,7 +81,9 @@ sham_selected$BBB_Munji_score <- sham_selected$BBB_Munji1
 
 Idents(combined_selected) <- "seurat_clusters"
 
-p_umap_selected <- DimPlot(combined_selected)
+p_umap_selected <- DimPlot(
+  combined_selected
+)
 
 recluster_colors <- ggplot_build(p_umap_selected)$data[[1]] %>%
   select(group, colour) %>%
@@ -88,6 +93,8 @@ recluster_colors <- ggplot_build(p_umap_selected)$data[[1]] %>%
 
 names(recluster_colors) <- levels(Idents(combined_selected))
 
+recluster_colors
+
 VlnPlot(
   sham_selected,
   features = "BBB_Munji_score",
@@ -96,27 +103,41 @@ VlnPlot(
 ) +
   theme(
     axis.title.x = element_blank(),
+
     axis.text.x = element_text(
       face = "bold"
     ),
+
     plot.title = element_text(
       size = 11,
       face = "bold"
     )
   ) +
   labs(
-    title = "BBB enrichment score"
+    title = "BBB Enrichment Score",
+    y = "BBB Module Score"
   )
 
 bbb_score_by_cluster <- sham_selected@meta.data %>%
   group_by(seurat_clusters) %>%
   summarise(
-    mean_BBB_score = mean(BBB_Munji_score, na.rm = TRUE),
-    median_BBB_score = median(BBB_Munji_score, na.rm = TRUE),
+    mean_BBB_score = mean(
+      BBB_Munji_score,
+      na.rm = TRUE
+    ),
+
+    median_BBB_score = median(
+      BBB_Munji_score,
+      na.rm = TRUE
+    ),
+
     n_cells = n(),
+
     .groups = "drop"
   ) %>%
-  arrange(desc(mean_BBB_score))
+  arrange(
+    desc(mean_BBB_score)
+  )
 
 bbb_score_by_cluster
 
@@ -140,15 +161,18 @@ ggplot(
   scale_fill_manual(
     values = recluster_colors
   ) +
-  theme_classic(base_size = 14) +
+  theme_classic(
+    base_size = 14
+  ) +
   theme(
     axis.text.y = element_text(
       face = "bold"
     ),
+
     legend.position = "none"
   ) +
   labs(
-    title = "BBB enrichment score",
+    title = "BBB Enrichment Score",
     x = "Cluster",
     y = "Mean BBB Module Score"
   )
