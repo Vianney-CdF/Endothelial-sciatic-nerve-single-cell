@@ -1,3 +1,8 @@
+---
+title: "Upset plot down/up DEG"
+author: "Dehais Vianney"
+---
+
 up_genes_by_cluster <- lapply(
   deg_cluster_list,
   function(deg) {
