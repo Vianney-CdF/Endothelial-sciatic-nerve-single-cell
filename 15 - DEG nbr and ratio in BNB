@@ -1,0 +1,322 @@
+deg_object <- combined_selected
+
+DefaultAssay(deg_object) <- "RNA"
+
+# Join RNA layers before differential expression
+deg_object <- JoinLayers(
+  deg_object,
+  assay = "RNA"
+)
+
+# Normalize RNA assay
+deg_object <- NormalizeData(
+  deg_object,
+  assay = "RNA",
+  verbose = FALSE
+)
+
+# Use the new reclustered identities
+Idents(deg_object) <- "seurat_clusters"
+Idents(deg_object) <- droplevels(Idents(deg_object))
+
+clusters <- levels(Idents(deg_object))
+
+# Check SHAM / OXA representation in each cluster
+table(
+  deg_object$seurat_clusters,
+  deg_object$condition
+)
+
+deg_cluster_list <- list()
+
+for (cl in clusters) {
+
+  message("--- Cluster ", cl, " ---")
+
+  # Number of cells per condition in this cluster
+  cluster_cells <- WhichCells(
+    deg_object,
+    idents = cl
+  )
+
+  condition_counts <- table(
+    deg_object$condition[cluster_cells]
+  )
+
+  n_sham <- ifelse(
+    "sham" %in% names(condition_counts),
+    condition_counts["sham"],
+    0
+  )
+
+  n_oxa <- ifelse(
+    "oxa" %in% names(condition_counts),
+    condition_counts["oxa"],
+    0
+  )
+
+  message(
+    "SHAM: ", n_sham,
+    " | OXA: ", n_oxa
+  )
+
+ if (n_sham < 3 || n_oxa < 3) {
+
+    message(
+      "Cluster ", cl,
+      " skipped: insufficient cells in one condition."
+    )
+
+    next
+  }
+
+  deg <- FindMarkers(
+    object = deg_object,
+    ident.1 = "oxa",
+    ident.2 = "sham",
+    subset.ident = cl,
+    group.by = "condition",
+    assay = "RNA",
+    slot = "data",
+    logfc.threshold = 0.25,
+    min.pct = 0.25
+  )
+
+  deg_cluster_list[[paste0("cluster_", cl)]] <- deg
+}
+
+deg_summary <- lapply(
+  names(deg_cluster_list),
+  function(cluster_name) {
+
+    deg <- deg_cluster_list[[cluster_name]]
+
+    cl <- sub(
+      "cluster_",
+      "",
+      cluster_name
+    )
+
+    n_oxa <- sum(
+      deg_object$seurat_clusters == cl &
+      deg_object$condition == "oxa"
+    )
+
+    n_sham <- sum(
+      deg_object$seurat_clusters == cl &
+      deg_object$condition == "sham"
+    )
+
+    n_up <- sum(
+      deg$p_val_adj < 0.05 &
+      deg$avg_log2FC > 0,
+      na.rm = TRUE
+    )
+
+    n_down <- sum(
+      deg$p_val_adj < 0.05 &
+      deg$avg_log2FC < 0,
+      na.rm = TRUE
+    )
+
+    data.frame(
+      cluster = cl,
+      n_sham = n_sham,
+      n_oxa = n_oxa,
+      tested_genes = nrow(deg),
+      up = n_up,
+      down = n_down
+    )
+      }
+) %>%
+  bind_rows() %>%
+  mutate(
+    total_deg = up + down,
+
+    # Descriptive normalization per 100 OXA cells
+    up_per_100_oxa = up / n_oxa * 100,
+    down_per_100_oxa = down / n_oxa * 100,
+    total_per_100_oxa = total_deg / n_oxa * 100,
+
+    # Additional useful normalization
+    deg_fraction = total_deg / tested_genes * 100
+  )
+
+deg_summary
+
+deg_counts_long <- deg_summary %>%
+  select(
+    cluster,
+    up,
+    down,
+    total_deg
+  ) %>%
+  pivot_longer(
+    cols = c(up, down),
+    names_to = "direction",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_signed = ifelse(
+      direction == "up",
+      count,
+      -count
+    ),
+
+    direction = factor(
+      direction,
+      levels = c("down", "up")
+    )
+  )
+
+ggplot(
+  deg_counts_long,
+  aes(
+    x = reorder(
+      cluster,
+      -total_deg
+    ),
+    y = count_signed,
+    fill = direction
+  )
+) +
+  geom_col(
+    width = 0.7,
+    color = "black",
+    alpha = 0.8
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = "black"
+  ) +
+  geom_text(
+    aes(
+      label = abs(count)
+    ),
+    position = position_identity(),
+    vjust = ifelse(
+      deg_counts_long$count_signed >= 0,
+      -0.4,
+      1.4
+    ),
+    size = 3.5,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "up" = "red",
+      "down" = "blue"
+    ),
+    labels = c(
+      "Down in OXA",
+      "Up in OXA"
+    )
+  ) +
+  scale_y_continuous(
+    labels = abs,
+    expand = expansion(
+      mult = c(0.15, 0.15)
+    )
+  ) +
+  theme_classic(
+    base_size = 14
+  ) +
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      face = "bold"
+    ),
+    legend.position = "top",
+    legend.title = element_blank()
+  ) +
+  labs(
+    title = "Differentially Expressed Genes by Cluster",
+    subtitle = "OXA vs SHAM | adjusted p < 0.05, |log2FC| > 0.25",
+    x = "Reclustered Population",
+    y = "Number of DEGs"
+  )
+
+# Normalisation DEG/nrb cells
+deg_summary <- deg_summary %>%
+  mutate(
+    up_ratio = up / n_oxa,
+    down_ratio = down / n_oxa,
+    total_ratio = total_deg / n_oxa
+  )
+
+deg_ratio_long <- deg_summary %>%
+  select(
+    cluster,
+    up_ratio,
+    down_ratio,
+    total_ratio
+  ) %>%
+  pivot_longer(
+    cols = c(up_ratio, down_ratio),
+    names_to = "direction",
+    values_to = "ratio"
+  ) %>%
+  mutate(
+    ratio_signed = ifelse(
+      direction == "up_ratio",
+      ratio,
+      -ratio
+    ),
+    direction = factor(
+      direction,
+      levels = c("down_ratio", "up_ratio")
+    )
+  )
+
+ggplot(
+  deg_ratio_long,
+  aes(
+    x = reorder(
+      cluster,
+      -total_ratio
+    ),
+    y = ratio_signed,
+    fill = direction
+  )
+) +
+  geom_col(
+    width = 0.7,
+    color = "black",
+    alpha = 0.8
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = "black"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "up_ratio" = "red",
+      "down_ratio" = "blue"
+    ),
+    labels = c(
+      "Down in OXA",
+      "Up in OXA"
+    )
+  ) +
+  scale_y_continuous(
+    labels = abs
+  ) +
+  theme_classic(
+ base_size = 14
+  ) +
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      face = "bold"
+    ),
+    legend.position = "top",
+    legend.title = element_blank()
+  ) +
+  labs(
+    title = "Relative Transcriptional Impact of Oxaliplatin",
+    subtitle = "DEG / OXA cell ratio",
+    x = "Reclustered Population",
+    y = "DEG / OXA Cell Ratio"
+  )
