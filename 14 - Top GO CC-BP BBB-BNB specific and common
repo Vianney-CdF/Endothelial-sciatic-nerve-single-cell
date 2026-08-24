@@ -133,8 +133,8 @@ bbb_bp <- run_go_enrichment(
 bbb_cc <- run_go_enrichment(
   genes = bbb_specific,
   ontology = "CC",
-  min_gs_size = 1,
-  max_gs_size = 800,
+  min_gs_size = 5,
+  max_gs_size = 500,
   simplify_cutoff = 0.5
 )
 
@@ -142,7 +142,7 @@ bbb_cc <- run_go_enrichment(
 bnb_bp <- run_go_enrichment(
   genes = bnb_specific,
   ontology = "BP",
-  min_gs_size = 30,
+  min_gs_size = 5,
   max_gs_size = 500,
   simplify_cutoff = 0.5
 )
@@ -150,8 +150,8 @@ bnb_bp <- run_go_enrichment(
 bnb_cc <- run_go_enrichment(
   genes = bnb_specific,
   ontology = "CC",
-  min_gs_size = 1,
-  max_gs_size = 800,
+  min_gs_size = 5,
+  max_gs_size = 500,
   simplify_cutoff = 0.5
 )
 
@@ -167,9 +167,9 @@ shared_bp <- run_go_enrichment(
 shared_cc <- run_go_enrichment(
   genes = shared_genes_25,
   ontology = "CC",
-  min_gs_size = 3,
+  min_gs_size = 5,
   max_gs_size = 500,
-  simplify_cutoff = 0.6
+  simplify_cutoff = 0.5
 )
 
 plot_go <- function(go_table, title, subtitle = NULL) {
