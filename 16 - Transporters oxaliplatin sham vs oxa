@@ -1,0 +1,151 @@
+oxa_selected <- subset(
+  combined_selected,
+  subset = condition == "oxa"
+)
+
+DefaultAssay(oxa_selected) <- "SCT"
+
+Idents(oxa_selected) <- "seurat_clusters"
+Idents(oxa_selected) <- droplevels(Idents(oxa_selected))
+
+levels(Idents(oxa_selected))
+table(Idents(oxa_selected))
+
+oxa_transporter_genes <- c(
+  "Slc22a2", # OCT2
+  "Slc22a4", # OCTN1
+  "Slc22a5", # OCTN2
+  "Slc22a3", # OCT3
+  "Slc31a1", # CTR1
+  "Slc47a1", # MATE1
+  "Atp7a",
+  "Atp7b",
+  "Abcc2"
+)
+
+oxa_transporter_groups <- data.frame(
+  gene = oxa_transporter_genes,
+  category = c(
+    "Influx",
+    "Influx",
+    "Influx",
+    "Influx",
+    "Influx",
+    "Efflux",
+    "Efflux",
+    "Efflux",
+    "Efflux"
+  )
+)
+
+genes_in_assay <- intersect(
+  oxa_transporter_genes,
+  rownames(combined_selected[["SCT"]])
+)
+
+genes_missing <- setdiff(
+  oxa_transporter_genes,
+  rownames(combined_selected[["SCT"]])
+)
+
+message(
+  "Transporter genes available in SCT assay",
+  length(genes_in_assay),
+  " / ",
+  length(oxa_transporter_genes)
+)
+
+message(
+  "Genes absent from SCT assay",
+  paste(genes_missing, collapse = ", ")
+)
+
+genes_in_assay
+
+
+DefaultAssay(combined_selected) <- "SCT"
+
+combined_selected$cluster_condition <- paste0(
+  "Cluster ",
+  combined_selected$seurat_clusters,
+  " - ",
+  toupper(combined_selected$condition)
+)
+
+table(combined_selected$cluster_condition)
+
+p_oxa_transporters <- DotPlot(
+  combined_selected,
+  features = genes_in_assay,
+  group.by = "cluster_condition",
+  assay = "SCT",
+  dot.scale = 8,
+  dot.min = 0,
+  scale = TRUE
+)
+
+p_oxa_transporters$data$category <-
+  oxa_transporter_groups$category[
+    match(
+      p_oxa_transporters$data$features.plot,
+      oxa_transporter_groups$gene
+    )
+  ]
+
+final_oxa_plot <- p_oxa_transporters +
+  scale_colour_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0
+  ) +
+  scale_size_continuous(
+    name = "% Expressing",
+    limits = c(0, 100),
+    range = c(0, 8)
+  ) +
+  facet_grid(
+    ~ category,
+    scales = "free_x",
+    space = "free_x"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      face = "italic",
+      size = 10,
+      color = "black"
+    ),
+    axis.text.y = element_text(
+      size = 10,
+      face = "bold",
+      color = "black"
+    ),
+    axis.title = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_text(
+      size = 12,
+      face = "bold",
+      color = "black"
+    ),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 1
+    ),
+    panel.spacing = grid::unit(
+      1,
+      "lines"
+    ),
+    legend.position = "right"
+  ) +
+  labs(
+    title = "Oxaliplatin Transporter Expression",
+    subtitle = "SHAM vs OXA across reclustered endothelial populations",
+    color = "Scaled Expression",
+    size = "% Expressing"
+  )
+
+print(final_oxa_plot)
