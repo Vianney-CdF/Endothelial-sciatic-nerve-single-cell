@@ -1,0 +1,268 @@
+---
+title: "Top GO CC-BP BBB-BNB specific/common"
+author: "Dehais Vianney"
+---
+
+bbb_genes_all <- unique(bbb_exhaustive_munji)
+
+bbb_specific <- setdiff(
+  bbb_genes_all,
+  bnb_genes
+)
+
+bnb_specific <- setdiff(
+  bnb_genes,
+  bbb_genes_all
+)
+
+# Shared genes
+bbb_bnb_common <- intersect(
+  bbb_genes_all,
+  bnb_genes
+)
+
+message("--- BBB / BNB GENE SETS ---")
+message("BBB-specific genes: ", length(bbb_specific))
+message("BNB-specific genes: ", length(bnb_specific))
+message("Shared BBB / BNB genes: ", length(bbb_bnb_common))
+
+DefaultAssay(sham_selected) <- "SCT"
+Idents(sham_selected) <- "seurat_clusters"
+Idents(sham_selected) <- droplevels(Idents(sham_selected))
+
+target_clusters <- levels(Idents(sham_selected))
+
+shared_dotplot_data <- DotPlot(
+  sham_selected,
+  features = bbb_bnb_common,
+  idents = target_clusters,
+  assay = "SCT"
+)$data
+
+shared_genes_25 <- shared_dotplot_data %>%
+  filter(pct.exp >= 25) %>%
+  pull(features.plot) %>%
+  unique() %>%
+  as.character()
+
+message(
+  "Shared genes before >=25% filter: ",
+  length(bbb_bnb_common)
+)
+
+message(
+  "Shared genes after >=25% filter: ",
+  length(shared_genes_25)
+)
+
+run_go_enrichment <- function(
+  genes,
+  ontology,
+  min_gs_size,
+  max_gs_size,
+  simplify_cutoff,
+  top_n = 10
+) {
+
+  ids <- bitr(
+    genes,
+    fromType = "SYMBOL",
+    toType = "ENTREZID",
+    OrgDb = org.Mm.eg.db
+  )
+
+  entrez_ids <- unique(ids$ENTREZID)
+
+  message(
+    ontology,
+    "mapped genes: ",
+    length(entrez_ids),
+    " / ",
+    length(unique(genes))
+  )
+
+  go_result <- enrichGO(
+    gene = entrez_ids,
+    OrgDb = org.Mm.eg.db,
+    ont = ontology,
+    pvalueCutoff = 0.05,
+    minGSSize = min_gs_size,
+    maxGSSize = max_gs_size,
+    readable = TRUE
+  )
+
+go_simple <- clusterProfiler::simplify(
+    go_result,
+    cutoff = simplify_cutoff,
+    by = "p.adjust",
+    select_fun = min
+  )
+
+  go_table <- as.data.frame(go_simple) %>%
+    slice_max(
+      order_by = Count,
+      n = top_n,
+      with_ties = FALSE
+    ) %>%
+    mutate(
+      Description = factor(
+        Description,
+        levels = rev(unique(Description))
+      )
+    )
+
+  return(
+    list(
+      ids = ids,
+      go = go_result,
+      go_simple = go_simple,
+      table = go_table
+    )
+  )
+}
+
+# BBB specific
+bbb_bp <- run_go_enrichment(
+  genes = bbb_specific,
+  ontology = "BP",
+  min_gs_size = 5,
+  max_gs_size = 500,
+  simplify_cutoff = 0.5
+)
+
+bbb_cc <- run_go_enrichment(
+  genes = bbb_specific,
+  ontology = "CC",
+  min_gs_size = 1,
+  max_gs_size = 800,
+  simplify_cutoff = 0.5
+)
+
+# BNB specific
+bnb_bp <- run_go_enrichment(
+  genes = bnb_specific,
+  ontology = "BP",
+  min_gs_size = 30,
+  max_gs_size = 500,
+  simplify_cutoff = 0.5
+)
+
+bnb_cc <- run_go_enrichment(
+  genes = bnb_specific,
+  ontology = "CC",
+  min_gs_size = 1,
+  max_gs_size = 800,
+  simplify_cutoff = 0.5
+)
+
+# Common both barriers
+shared_bp <- run_go_enrichment(
+  genes = shared_genes_25,
+  ontology = "BP",
+  min_gs_size = 5,
+  max_gs_size = 500,
+  simplify_cutoff = 0.5
+)
+
+shared_cc <- run_go_enrichment(
+  genes = shared_genes_25,
+  ontology = "CC",
+  min_gs_size = 3,
+  max_gs_size = 500,
+  simplify_cutoff = 0.6
+)
+
+plot_go <- function(go_table, title, subtitle = NULL) {
+ggplot(
+    go_table,
+    aes(
+      x = Count,
+      y = Description,
+      fill = p.adjust
+    )
+  ) +
+    geom_col(
+      width = 0.7,
+      color = "black",
+      linewidth = 0.3
+    ) +
+    scale_fill_gradientn(
+      colors = c("blue", "white", "red"),
+      name = "p-adj"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.y = element_text(
+        size = 8,
+        face = "bold",
+        color = "black"
+      ),
+      panel.border = element_rect(
+        colour = "black",
+        fill = NA,
+        linewidth = 0.5
+      ),
+      plot.title = element_text(
+        face = "bold"
+      )
+    ) +
+    labs(
+      title = title,
+      subtitle = subtitle,
+      x = "Gene Count",
+      y = NULL
+    )
+}
+
+p_bbb_bp <- plot_go(
+  bbb_bp$table,
+  title = "BBB-Specific Biological Processes",
+  subtitle = "Munji BBB genes absent from the BNB gene set"
+)
+
+p_bbb_cc <- plot_go(
+  bbb_cc$table,
+  title = "BBB-Specific Cellular Components",
+  subtitle = "Munji BBB genes absent from the BNB gene set"
+)
+
+
+p_bnb_bp <- plot_go(
+  bnb_bp$table,
+  title = "BNB-Specific Biological Processes",
+  subtitle = "BNB genes absent from the Munji BBB signature"
+)
+
+p_bnb_cc <- plot_go(
+  bnb_cc$table,
+  title = "BNB-Specific Cellular Components",
+  subtitle = "BNB genes absent from the Munji BBB signature"
+)
+
+
+p_shared_bp <- plot_go(
+  shared_bp$table,
+  title = "Shared BBB / BNB Biological Processes",
+  subtitle = "Shared genes expressed in >=25% of cells"
+)
+
+p_shared_cc <- plot_go(
+  shared_cc$table,
+  title = "Shared BBB / BNB Cellular Components",
+  subtitle = "Shared genes expressed in >=25% of cells"
+)
+
+# Plot specific BBB
+print(
+  p_bbb_bp + p_bbb_cc
+)
+
+# Plot specific BNB
+print(
+  p_bnb_bp + p_bnb_cc
+)
+
+# Plot common both barriers
+print(
+  p_shared_bp + p_shared_cc
+)
